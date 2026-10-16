@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FishRadar V39 NO-AUTH</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;font-family:sans-serif}body,html{margin:0;padding:0;width:100%;height:100dvh;overflow:hidden;background:#0f172a}
+#map{width:100%;height:100dvh;position:absolute;top:0;left:0;z-index:1}
+.top{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(255,255,255,0.96);border-radius:24px;padding:8px 14px;font-size:12px;font-weight:700;display:flex;gap:6px;align-items:center}
+#joinPanel{position:fixed;top:0;left:0;width:100%;height:100dvh;z-index:9999;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);display:flex;align-items:flex-start;justify-content:center;padding:12px 16px;overflow-y:auto}
+.card{width:100%;max-width:380px;background:#fff;border-radius:24px;padding:18px;margin-top:6px}
+.btn-join{width:100%;height:58px;background:#0f172a;color:#fff;border:0;border-radius:16px;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
+.btn-join:disabled{opacity:0.4}.input-name{width:100%;height:52px;border:2px solid #e2e8f0;border-radius:14px;padding:0 16px;font-size:16px;margin-bottom:14px;font-weight:600}
+.colors{display:flex;gap:8px;margin-bottom:14px}.color-btn{flex:1;height:60px;border-radius:14px;border:3px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.color-btn.active{border-color:#0f172a;transform:scale(1.06)}
+.info{border-radius:14px;padding:12px;font-size:12px;margin-bottom:10px;display:flex;gap:8px;line-height:1.4}
+.follow-btn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:600;background:#fff;color:#0f172a;border:2px solid #0f172a;border-radius:24px;padding:12px 20px;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;gap:8px}
+.follow-btn.following{background:#0f172a;color:#fff}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="top">🟢 FishRadar V39 • <span id="online">0</span> คน • <span id="authText">กำลังเชื่อม...</span></div>
+<button class="follow-btn following" id="followBtn">📍 ติดตาม: เปิด</button>
+<div id="joinPanel">
+<div class="card">
+<h2 style="margin:0 0 14px 0;font-size:16px">👥 เข้าร่วมทีม V39</h2>
+<button class="btn-join" id="joinBtn">✈ Join Team & Share Location</button>
+<input class="input-name" id="nameInput" placeholder="เช่น อุทิศ ต้นหู้ย, Hero..." autocomplete="name">
+<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">สีทีม • TEAM COLOR</div>
+<div class="colors" id="colors"></div>
+<div class="info" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46"><span>✅</span><div><b>V39 ไม่ต้องรอ Auth!</b><br>กด Join ได้เลย แม้ขึ้น Auth ล้มเหลว • เขียนลง teams/phuket/drivers ทันที<br><span id="errBox" style="font-size:10px;color:#dc2626"></span></div></div>
+<div style="text-align:center;font-size:11px;color:#94a3b8">V39 • NO-AUTH FALLBACK • hero-team-map</div>
+</div>
+</div>
+<script>
+const COLORS=[{name:'Coral',bg:'#ff6b6b',dot:'#ef4444'},{name:'Teal',bg:'#2dd4bf',dot:'#14b8a6'},{name:'Sun',bg:'#fcd34d',dot:'#f59e0b'},{name:'Violet',bg:'#a78bfa',dot:'#8b5cf6'}];
+let myColor=COLORS[0],myName='',myId='',map,myMarker,markers={},db,lastLat=7.8804,lastLng=98.3923,isFollowing=true,wakeLock=null;
+const colorsDiv=document.getElementById('colors');
+COLORS.forEach((c,i)=>{const btn=document.createElement('button');btn.className='color-btn'+(i==0?' active':'');btn.style.background=c.bg;btn.innerHTML=`<div style="width:22px;height:22px;border-radius:50%;background:${c.dot};border:2px solid #fff"></div><div style="color:${c.name=='Sun'?'#78350f':'#fff'};font-size:11px;font-weight:700;margin-top:3px">${c.name}</div>`;btn.onclick=()=>{document.querySelectorAll('.color-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');myColor=c;};colorsDiv.appendChild(btn);});
+const nameInput=document.getElementById('nameInput');
+const joinBtn=document.getElementById('joinBtn');
+const authText=document.getElementById('authText');
+const errBox=document.getElementById('errBox');
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCjBIqaHt_0HywLaFuSS7JZRwAZyhl9rQ",
+  authDomain: "hero-team-map.firebaseapp.com",
+  databaseURL: "https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hero-team-map",
+  storageBucket: "hero-team-map.firebasestorage.app",
+  messagingSenderId: "369947580532",
+  appId: "1:369947580532:web:6ac9dc69a5460ed1d19921"
+};
+firebase.initializeApp(firebaseConfig);
+db=firebase.database();
+firebase.auth().signInAnonymously().then(()=>{
+  authText.textContent='✅ เชื่อมแล้ว';
+  console.log('Auth OK');
+}).catch(e=>{
+  authText.textContent='⚠️ Auth ข้ามไป (ยังเขียนได้)';
+  errBox.textContent='Auth error: '+e.code+' - '+e.message+' (แต่ V39 จะเขียนแบบไม่ต้อง Auth)';
+  console.warn('Auth failed but continue', e);
+});
+
+map=L.map('map',{zoomControl:false}).setView([7.8804,98.3923],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+map.on('dragstart',()=>{if(isFollowing){isFollowing=false;document.getElementById('followBtn').textContent='📍 กลับมาหาฉัน';document.getElementById('followBtn').classList.remove('following');}});
+document.getElementById('followBtn').onclick=()=>{isFollowing=!isFollowing;document.getElementById('followBtn').textContent=isFollowing?'📍 ติดตาม: เปิด':'📍 กลับมาหาฉัน';document.getElementById('followBtn').classList.toggle('following',isFollowing);if(isFollowing) map.flyTo([lastLat,lastLng],16);};
+
+function writePos(lat,lng,acc){
+ if(!myId) return;
+ lastLat=lat; lastLng=lng;
+ const data={name:myName,color:myColor,lat:lat,lng:lng,latitude:lat,longitude:lng,acc:Math.round(acc||0),ts:Date.now(),isReal:true,v:'V39'};
+ db.ref('teams/phuket/drivers/'+myId).set(data).then(()=>console.log('write ok teams')).catch(e=>errBox.textContent='Write teams error: '+e.message);
+ db.ref('drivers/'+myId).set(data);
+ try{db.ref('teams/phuket/drivers/'+myId).onDisconnect().remove();db.ref('drivers/'+myId).onDisconnect().remove();}catch(e){}
+}
+
+nameInput.addEventListener('input',()=>{myName=nameInput.value.trim();});
+joinBtn.onclick=()=>{
+ if(!myName){alert('ใส่ชื่อก่อนครับ'); return;}
+ myId='real_'+Date.now().toString(36);
+ document.getElementById('joinPanel').style.display='none';
+ if(navigator.geolocation){
+  navigator.geolocation.watchPosition(pos=>{
+   lastLat=pos.coords.latitude; lastLng=pos.coords.longitude;
+   if(!myMarker){map.flyTo([lastLat,lastLng],15);myMarker=L.circleMarker([lastLat,lastLng],{radius:12,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map).bindPopup(myName+' (คุณ)');}
+   else {myMarker.setLatLng([lastLat,lastLng]); if(isFollowing) map.panTo([lastLat,lastLng]);}
+   writePos(lastLat,lastLng,pos.coords.accuracy);
+  },()=>{writePos(7.8804,98.3923,100);},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+ }else writePos(7.8804,98.3923,100);
+
+ // Listen for others
+ db.ref('teams/phuket/drivers').on('value',snap=>{
+  const data=snap.val()||{}; let count=0;
+  Object.keys(markers).forEach(id=>{if(!data[id]||id===myId){if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}}});
+  Object.keys(data).forEach(id=>{
+   if(id===myId) return;
+   const d=data[id]; if(!d) return;
+   const lat=parseFloat(d.lat||d.latitude),lng=parseFloat(d.lng||d.longitude);
+   if(isNaN(lat)||isNaN(lng)||lat===0) return;
+   count++;
+   const bg=d.color?.bg||'#ef4444'; const name=d.name||'เพื่อน';
+   if(!markers[id]){
+    const icon=L.divIcon({html:`<div style="background:${bg};width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">${name[0].toUpperCase()}</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17]});
+    markers[id]=L.marker([lat,lng],{icon}).addTo(map).bindPopup(`<b>${name}</b>`);
+   }else markers[id].setLatLng([lat,lng]);
+  });
+  document.getElementById('online').textContent=count+1;
+ });
+};
+
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister()));}
+</script>
+</body>
+</html>
