@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FishRadar Phuket - PWA แอพ</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FishRadar">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700&family=Noto+Sans+Thai:wght@400;600&display=swap');
+*{box-sizing:border-box;font-family:'Outfit','Noto Sans Thai',sans-serif;-webkit-tap-highlight-color:transparent}
+body,html{margin:0;padding:0;width:100%;height:100dvh;overflow:hidden;background:#0f172a}
+#map{width:100%;height:100dvh;position:absolute;top:0;left:0;z-index:1}
+.floating-top{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);border-radius:24px;padding:8px 14px;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.2);display:flex;gap:6px;align-items:center;white-space:nowrap}
+.pill{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:500;background:#0f172a;color:#fff;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;display:flex;gap:8px;align-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+#joinPanel{position:fixed;top:0;left:0;width:100%;height:100dvh;z-index:9999;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);display:flex;align-items:flex-start;justify-content:center;padding:12px 16px;overflow-y:auto}
+.card{width:100%;max-width:380px;background:#fff;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);padding:18px;margin-top:6px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.badge{font-size:11px;background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;padding:5px 10px;border-radius:20px;font-weight:700}
+.btn-join{width:100%;height:58px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:0;border-radius:16px;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 20px rgba(15,23,42,0.3);margin-bottom:14px;position:sticky;top:0;z-index:2}
+.btn-join:disabled{opacity:0.4}
+.btn-join:active{transform:scale(0.98)}
+.input-name{width:100%;height:52px;border:2px solid #e2e8f0;border-radius:14px;padding:0 16px;font-size:16px;outline:none;margin-bottom:14px;font-weight:600}
+.input-name:focus{border-color:#0f172a}
+.colors{display:flex;gap:8px;margin-bottom:14px}
+.color-btn{flex:1;height:60px;border-radius:14px;border:3px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.2s}
+.color-btn.active{border-color:#0f172a;transform:scale(1.06);box-shadow:0 6px 16px rgba(0,0,0,0.15)}
+.color-btn .dot{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.9)}
+.info{border-radius:14px;padding:12px;font-size:12px;margin-bottom:10px;display:flex;gap:8px;line-height:1.4}
+.info.pwa{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.info.green{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.btn-install{width:100%;height:50px;background:#3b82f6;color:#fff;border:0;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:none;margin-bottom:12px}
+.btn-install.show{display:flex;align-items:center;justify-content:center;gap:8px}
+.footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:10px}
+.dot-live{width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,0.7)}70%{box-shadow:0 0 0 6px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.leaflet-control-zoom{border-radius:12px!important;overflow:hidden}
+/* NEW: Follow button */
+.follow-btn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:600;background:#fff;color:#0f172a;border:2px solid #0f172a;border-radius:24px;padding:12px 20px;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,0.3);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s}
+.follow-btn.following{background:#0f172a;color:#fff;box-shadow:0 8px 24px rgba(15,23,42,0.4)}
+.follow-btn:active{transform:translateX(-50%) scale(0.96)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="floating-top" id="topBar"><span class="dot-live"></span> FishRadar ภูเก็ต LIVE <span id="onlineCount">0</span> • <span id="realCount">0</span> คนจริง</div>
+<div class="pill" id="wakePill">🔆 กันจอดับ: <span id="wakeStatus">เปิด</span> • พับจอได้</div>
+<button class="follow-btn following" id="followBtn" onclick="toggleFollow()">📍 ติดตาม: เปิด</button>
+
+<div id="joinPanel">
+<div class="card">
+<div class="header"><h2 style="margin:0;font-size:16px">👥 เข้าร่วมทีม</h2><span class="badge">PWA Ready</span></div>
+<button class="btn-install" id="installBtn">📲 ติดตั้งเป็นแอพ (พับจอได้)</button>
+<button class="btn-join" id="joinBtn" disabled>✈ Join Team & Share Location</button>
+<input class="input-name" id="nameInput" placeholder="เช่น Hero, ต้อม, Nok..." autocomplete="name">
+<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">สีทีม • TEAM COLOR</div>
+<div class="colors" id="colors"></div>
+<div class="info pwa"><span>📲</span><div><b>PWA ติดตั้งเป็นแอพแล้ว!</b><br>• พับหน้าจอ/สลับแอพ ยังส่งพิกัดต่อ<br>• กันจอดับอัตโนมัติ Wake Lock<br>• เปิดจากหน้าโฮม ไม่ต้องเปิด Chrome<br>• ทำงานออฟไลน์ได้</div></div>
+<div class="info green"><span>🛡️</span><div><b>V35 Follow Mode • Path: teams/phuket/drivers</b><br><span style="font-size:11px">✅ แผนที่ไหลตามตอนขับ • รูดดูจุดอื่นแล้วหยุดตามเอง<br>ปิดแท็บ 5 วิหาย - ไม่ค้างเป็นบอท</span></div></div>
+<div class="footer">V35 Follow • ติดตามได้ • พับจอได้ • OSM ฟรี • teams/phuket</div>
+</div>
+</div>
+
+<script>
+// PWA Install
+let deferredPrompt=null;
+const installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  installBtn.classList.add('show');
+});
+installBtn.onclick=async()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const {outcome}=await deferredPrompt.userChoice;
+  if(outcome==='accepted'){installBtn.textContent='✅ ติดตั้งแล้ว!'; setTimeout(()=>installBtn.classList.remove('show'),2000);}
+  deferredPrompt=null;
+};
+if(window.matchMedia('(display-mode: standalone)').matches){
+  installBtn.textContent='✅ เปิดจากแอพแล้ว - พับจอได้!';
+  installBtn.classList.add('show');
+  installBtn.style.background='#16a34a';
+}
+
+// Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(reg=>{
+    console.log('SW registered');
+    if(navigator.serviceWorker.controller){
+      setInterval(()=>{reg.active&&reg.active.postMessage('start-heartbeat');},1000);
+    }
+  });
+}
+
+// App Logic
+const COLORS=[{name:'Coral',bg:'#ff6b6b',dot:'#ef4444'},{name:'Teal',bg:'#2dd4bf',dot:'#14b8a6'},{name:'Sun',bg:'#fcd34d',dot:'#f59e0b'},{name:'Violet',bg:'#a78bfa',dot:'#8b5cf6'}];
+let myColor=COLORS[0],myName='',myId='',map,myMarker,markers={},db,lastLat=7.8804,lastLng=98.3923,lastAcc=100,wakeLock=null,heartbeatTimer=null;
+let isFollowing = true; // NEW: เปิดติดตามตั้งแต่แรก
+
+const colorsDiv=document.getElementById('colors');
+COLORS.forEach((c,i)=>{
+const btn=document.createElement('button');
+btn.className='color-btn'+(i==0?' active':'');
+btn.style.background=c.bg;
+btn.innerHTML=`<div class="dot" style="background:${c.dot}"></div><div style="color:${c.name=='Sun'?'#78350f':'#fff'};font-size:11px;font-weight:700;margin-top:3px">${c.name}</div>`;
+btn.onclick=()=>{document.querySelectorAll('.color-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');myColor=c;};
+colorsDiv.appendChild(btn);
+});
+
+const nameInput=document.getElementById('nameInput');
+const joinBtn=document.getElementById('joinBtn');
+nameInput.addEventListener('input',()=>{myName=nameInput.value.trim();joinBtn.disabled=!myName;});
+
+firebase.initializeApp({databaseURL:"https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app"});
+db=firebase.database();
+map=L.map('map',{zoomControl:false}).setView([7.8804,98.3923],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+// NEW: ถ้าผู้ใช้รูดแผนที่เอง ให้หยุดติดตามอัตโนมัติ
+map.on('dragstart', ()=>{
+  if(isFollowing){
+    isFollowing = false;
+    updateFollowBtn();
+  }
+});
+map.on('zoomstart', ()=>{
+  // ซูมเองก็ถือว่าอยากดูเอง
+  if(isFollowing && document.getElementById('joinPanel').style.display==='none'){
+    // ไม่ปิดตอนซูมครั้งแรกที่ join
+  }
+});
+
+function updateFollowBtn(){
+  const btn = document.getElementById('followBtn');
+  if(isFollowing){
+    btn.textContent = '📍 ติดตาม: เปิด';
+    btn.classList.add('following');
+  } else {
+    btn.textContent = '📍 กลับมาหาฉัน';
+    btn.classList.remove('following');
+  }
+}
+
+function toggleFollow(){
+  isFollowing = !isFollowing;
+  updateFollowBtn();
+  if(isFollowing && lastLat){
+    map.flyTo([lastLat,lastLng], 16, {duration: 1});
+  }
+}
+
+// Wake Lock - กันจอดับ
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock=await navigator.wakeLock.request('screen');
+      document.getElementById('wakeStatus').textContent='เปิด';
+      document.getElementById('wakePill').style.background='#dcfce7';
+      wakeLock.addEventListener('release',()=>{document.getElementById('wakeStatus').textContent='ปิด';});
+    }
+  }catch(e){console.log('wakeLock error',e);}
+}
+
+// Heartbeat when hidden - พับจอแล้วยังส่ง
+function startHeartbeat(){
+  if(heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer=setInterval(()=>{
+    if(myId && lastLat){
+      const data={name:myName,color:myColor,lat:lastLat,lng:lastLng,latitude:lastLat,longitude:lastLng,acc:lastAcc,ts:Date.now(),isReal:true,heartbeat:true};
+      db.ref('teams/phuket/drivers/'+myId).set(data);
+    }
+  },30000);
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    startHeartbeat();
+  }else{
+    requestWakeLock();
+    if(myId) writePos(lastLat,lastLng,lastAcc);
+  }
+});
+
+// Bot filter
+function isBot(id,d){
+  const now=Date.now();
+  const ts=d.ts||0;
+  const age=now-ts;
+  const isOld=age>5*60*1000;
+  const isZero=!d.lat||!d.lng||parseFloat(d.lat)==0;
+  const isHero=id.startsWith('hero_') || (d.name||'').startsWith('hero_');
+  return isOld||isZero||isHero;
+}
+
+joinBtn.onclick=()=>{
+if(!myName)return;
+myId='real_'+Date.now().toString(36)+'_'+Math.random().toString(36).substr(2,3);
+document.getElementById('joinPanel').style.display='none';
+requestWakeLock();
+startHeartbeat();
+writePos(7.8804,98.3923,100);
+if(navigator.geolocation){
+navigator.geolocation.watchPosition(pos=>{
+lastLat=pos.coords.latitude; lastLng=pos.coords.longitude; lastAcc=Math.round(pos.coords.accuracy);
+if(!myMarker){
+  map.flyTo([lastLat,lastLng],15);
+  myMarker=L.circleMarker([lastLat,lastLng],{radius:12,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map).bindPopup(myName+' (คุณ)');
+  isFollowing = true;
+  updateFollowBtn();
+}
+else {
+  myMarker.setLatLng([lastLat,lastLng]);
+  // NEW: ถ้าติดตามอยู่ ให้แผนที่ไหลตาม
+  if(isFollowing){
+    map.panTo([lastLat,lastLng], {animate:true, duration:0.8});
+  }
+}
+writePos(lastLat,lastLng,pos.coords.accuracy);
+},()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+}
+db.ref('teams/phuket/drivers').on('value',snap=>{
+const data=snap.val()||{};let real=0;
+Object.keys(markers).forEach(id=>{if(!data[id]||id===myId){if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}}});
+Object.keys(data).forEach(id=>{
+if(id===myId) return;
+const d=data[id]; if(!d) return;
+if(isBot(id,d)){ if(markers[id]){map.removeLayer(markers[id]); delete markers[id];} return;}
+const lat=parseFloat(d.lat||d.latitude),lng=parseFloat(d.lng||d.longitude);
+if(isNaN(lat)||isNaN(lng)) return;
+real++;
+const bg=d.color?.bg||'#ef4444';
+const name=d.name||'เพื่อน';
+if(!markers[id]){
+const icon=L.divIcon({html:`<div style="background:${bg};width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">${name[0].toUpperCase()}</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17]});
+markers[id]=L.marker([lat,lng],{icon}).addTo(map).bindPopup(`<b>${name}</b><br>คนจริง ✅`);
+}else markers[id].setLatLng([lat,lng]);
+});
+document.getElementById('onlineCount').textContent=real+1;
+document.getElementById('realCount').textContent=real;
+});
+};
+
+function writePos(lat,lng,acc){
+if(!myId) return;
+lastLat=lat; lastLng=lng; lastAcc=Math.round(acc||0);
+const data={name:myName,color:myColor,lat:lat,lng:lng,latitude:lat,longitude:lng,acc:lastAcc,ts:Date.now(),isReal:true};
+db.ref('teams/phuket/drivers/'+myId).set(data);
+db.ref('drivers/'+myId).set(data);
+try{
+db.ref('teams/phuket/drivers/'+myId).onDisconnect().remove();
+db.ref('drivers/'+myId).onDisconnect().remove();
+}catch(e){}
+}
+setTimeout(()=>nameInput.focus(),500);
+</script>
+</body>
+</html>
