@@ -1,5 +1,4 @@
-
-const CACHE='fishradar-v34-pwa-1';
+const CACHE='fishradar-v38-final-1';
 const ASSETS=['./','./index.html','./manifest.json'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
@@ -11,17 +10,25 @@ self.addEventListener('activate',e=>{
 });
 self.addEventListener('fetch',e=>{
   e.respondWith(
-    caches.match(e.request).then(r=> r || fetch(e.request).then(res=>{
-      // cache OSM tiles
-      if(e.request.url.includes('tile.openstreetmap.org')){
-        const copy=res.clone();
-        caches.open(CACHE).then(c=>c.put(e.request,copy));
+    caches.match(e.request).then(r=> {
+      // สำหรับไฟล์หลัก ไม่ใช้ cache เก่าเลย บังคับโหลดใหม่
+      if(e.request.url.includes('index.html') || e.request.mode === 'navigate'){
+        return fetch(e.request).then(res=>{
+          const copy=res.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,copy));
+          return res;
+        }).catch(()=>r || caches.match('./index.html'));
       }
-      return res;
-    }).catch(()=>caches.match('./index.html'))
-  ));
+      return r || fetch(e.request).then(res=>{
+        if(e.request.url.includes('tile.openstreetmap.org')){
+          const copy=res.clone();
+          caches.open(CACHE).then(c=>c.put(e.request,copy));
+        }
+        return res;
+      }).catch(()=>caches.match('./index.html'))
+    })
+  );
 });
-// background heartbeat
 let heartbeat=null;
 self.addEventListener('message',e=>{
   if(e.data==='start-heartbeat'){
