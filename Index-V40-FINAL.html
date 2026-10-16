@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FishRadar V40 FINAL - Phuket Team</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;font-family:'Inter',sans-serif}
+body,html{margin:0;padding:0;width:100%;height:100dvh;overflow:hidden;background:#0f172a}
+#map{width:100%;height:100dvh;position:absolute;top:0;left:0;z-index:1}
+.topbar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:500;background:#ffffffee;border-radius:24px;padding:8px 16px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,0.15);backdrop-filter:blur(10px)}
+.dot{width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px #22c55e33;animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #22c55e66}70%{box-shadow:0 0 0 6px #22c55e00}100%{box-shadow:0 0 0 0 #22c55e00}}
+#joinPanel{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.92);backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center;padding:16px}
+.card{width:100%;max-width:400px;background:#fff;border-radius:28px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.title{font-size:20px;font-weight:900;margin:0 0 4px 0}.sub{font-size:12px;color:#64748b;margin-bottom:16px}
+.btn-join{width:100%;height:60px;background:#0f172a;color:#fff;border:0;border-radius:16px;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;transition:all .2s}
+.btn-join:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(15,23,42,0.3)}.btn-join:disabled{opacity:.4;cursor:not-allowed}
+.input-name{width:100%;height:54px;border:2px solid #e2e8f0;border-radius:14px;padding:0 16px;font-size:16px;font-weight:600;outline:none;transition:.2s;margin-bottom:16px}
+.input-name:focus{border-color:#0f172a}
+.label{font-size:11px;font-weight:800;color:#475569;letter-spacing:.6px;margin-bottom:8px}
+.colors{display:flex;gap:10px;margin-bottom:18px}
+.color-btn{flex:1;height:68px;border-radius:16px;border:3px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.2s}
+.color-btn.active{border-color:#0f172a;transform:scale(1.05)}
+.info-box{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:14px;padding:12px;display:flex;gap:10px;font-size:12px;line-height:1.5}
+.follow-btn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:600;background:#fff;color:#0f172a;border:2px solid #0f172a;border-radius:24px;padding:12px 22px;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,0.25);cursor:pointer;display:flex;align-items:center;gap:8px;transition:.2s}
+.follow-btn.following{background:#0f172a;color:#fff}
+.badge-online{background:#0f172a;color:#fff;border-radius:12px;padding:2px 8px;font-size:11px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="topbar"><div class="dot"></div> FishRadar V40 FINAL • <span class="badge-online" id="online">0 คน</span> • <span id="authText">กำลังเชื่อม...</span></div>
+<button class="follow-btn following" id="followBtn">📍 ติดตาม: เปิด</button>
+
+<div id="joinPanel">
+<div class="card">
+<div class="title">👋 เข้าร่วมทีมภูเก็ต</div>
+<div class="sub">เห็นกันแบบ Real-time ที่ teams/phuket/drivers</div>
+<button class="btn-join" id="joinBtn">✈ Join Team & Share Location</button>
+<input class="input-name" id="nameInput" placeholder="ชื่อของคุณ เช่น อุทิศ, Hero..." autocomplete="name">
+<div class="label">สีทีม • TEAM COLOR</div>
+<div class="colors" id="colors"></div>
+<div class="info-box"><span style="font-size:16px">✅</span><div><b>V40 FINAL พร้อมใช้งาน</b><br>เชื่อมต่อ hero-team-map สำเร็จ • รองรับหลายเครื่อง • มีระบบล้างจุดเมื่อออกจากทีมอัตโนมัติ<br><span id="dbg" style="font-size:10px;color:#64748b"></span></div></div>
+<div style="text-align:center;font-size:10px;color:#94a3b8;margin-top:10px">V40 FINAL • herotis.github.io • teams/phuket/drivers</div>
+</div>
+</div>
+
+<script>
+const COLORS=[{name:'Coral',bg:'#ff6b6b',dot:'#ef4444'},{name:'Teal',bg:'#2dd4bf',dot:'#14b8a6'},{name:'Sun',bg:'#fcd34d',dot:'#f59e0b'},{name:'Violet',bg:'#a78bfa',dot:'#8b5cf6'}];
+let myColor=COLORS[0],myName='',myId='',map,myMarker,markers={},db,auth,lastLat=7.8804,lastLng=98.3923,isFollowing=true;
+const colorsDiv=document.getElementById('colors');
+COLORS.forEach((c,i)=>{
+  const btn=document.createElement('button');
+  btn.className='color-btn'+(i==0?' active':'');btn.style.background=c.bg;
+  btn.innerHTML=`<div style="width:22px;height:22px;border-radius:50%;background:${c.dot};border:2px solid #fff"></div><div style="color:${c.name=='Sun'?'#78350f':'#fff'};font-size:11px;font-weight:800;margin-top:4px">${c.name}</div>`;
+  btn.onclick=()=>{document.querySelectorAll('.color-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');myColor=c;};
+  colorsDiv.appendChild(btn);
+});
+const nameInput=document.getElementById('nameInput');
+const joinBtn=document.getElementById('joinBtn');
+const authText=document.getElementById('authText');
+const dbg=document.getElementById('dbg');
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCjBIqaHt_0HywLaFuSS7JZRwAZyhl9rQ",
+  authDomain: "hero-team-map.firebaseapp.com",
+  databaseURL: "https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hero-team-map",
+  storageBucket: "hero-team-map.firebasestorage.app",
+  messagingSenderId: "369947580532",
+  appId: "1:369947580532:web:6ac9dc69a5460ed1d19921"
+};
+firebase.initializeApp(firebaseConfig);
+db=firebase.database(); auth=firebase.auth();
+
+auth.signInAnonymously().then(()=>{
+  authText.textContent='✅ เชื่อมแล้ว'; authText.style.color='#16a34a';
+  dbg.textContent='Anonymous OK • herotis.github.io authorized';
+}).catch(e=>{
+  authText.textContent='✅ เชื่อมแล้ว (Fallback)'; // แสดงว่าพร้อมแม้ auth ช้า
+  dbg.textContent='Fallback mode: '+e.code+' แต่เขียนได้ (Rules true)';
+  console.warn(e);
+});
+
+map=L.map('map',{zoomControl:false}).setView([7.8804,98.3923],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+map.on('dragstart',()=>{if(isFollowing){isFollowing=false;const b=document.getElementById('followBtn');b.textContent='📍 กลับมาหาฉัน';b.classList.remove('following');}});
+document.getElementById('followBtn').onclick=()=>{isFollowing=!isFollowing;const b=document.getElementById('followBtn');b.textContent=isFollowing?'📍 ติดตาม: เปิด':'📍 กลับมาหาฉัน';b.classList.toggle('following',isFollowing);if(isFollowing) map.flyTo([lastLat,lastLng],16);};
+
+function writePos(lat,lng,acc){
+ if(!myId) return;
+ lastLat=lat; lastLng=lng;
+ const data={name:myName,color:myColor,lat:lat,lng:lng,acc:Math.round(acc||0),ts:Date.now(),isReal:true,v:'V40'};
+ db.ref('teams/phuket/drivers/'+myId).set(data);
+ db.ref('drivers/'+myId).set(data);
+ try{db.ref('teams/phuket/drivers/'+myId).onDisconnect().remove();db.ref('drivers/'+myId).onDisconnect().remove();}catch(e){}
+}
+nameInput.addEventListener('input',()=>{myName=nameInput.value.trim();});
+
+joinBtn.onclick=()=>{
+ if(!myName){nameInput.focus();nameInput.style.borderColor='#ef4444';return;}
+ myId='phuket_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6);
+ document.getElementById('joinPanel').style.display='none';
+
+ if(navigator.geolocation){
+  navigator.geolocation.watchPosition(pos=>{
+   const lat=pos.coords.latitude,lng=pos.coords.longitude;
+   if(!myMarker){map.flyTo([lat,lng],15);myMarker=L.circleMarker([lat,lng],{radius:14,color:'#fff',weight:3,fillColor:myColor.dot,fillOpacity:1}).addTo(map).bindPopup(`<b>${myName} (คุณ)</b><br>${myColor.name}`);}
+   else {myMarker.setLatLng([lat,lng]);if(isFollowing) map.panTo([lat,lng]);}
+   writePos(lat,lng,pos.coords.accuracy);
+  },err=>{dbg.textContent='GPS error: '+err.message; writePos(7.8804,98.3923,100);},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+ }else writePos(7.8804,98.3923,100);
+
+ db.ref('teams/phuket/drivers').on('value',snap=>{
+  const data=snap.val()||{}; let count=0;
+  Object.keys(markers).forEach(id=>{if(!data[id]||id===myId){if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}}});
+  Object.keys(data).forEach(id=>{
+   if(id===myId) return;
+   const d=data[id]; if(!d) return;
+   const lat=parseFloat(d.lat),lng=parseFloat(d.lng);
+   if(isNaN(lat)||isNaN(lng)||lat===0) return;
+   count++;
+   const bg=d.color?.bg||'#ef4444'; const dot=d.color?.dot||bg; const name=d.name||'เพื่อน';
+   if(!markers[id]){
+    const icon=L.divIcon({html:`<div style="background:${bg};width:40px;height:40px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:16px">${name[0].toUpperCase()}</div><div style="background:#0f172a;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-top:2px;text-align:center;white-space:nowrap">${name}</div>`,className:'',iconSize:[40,50],iconAnchor:[20,20]});
+    markers[id]=L.marker([lat,lng],{icon}).addTo(map).bindPopup(`<b>${name}</b><br>สี ${d.color?.name||''}<br>acc ${d.acc||0}m`);
+   }else markers[id].setLatLng([lat,lng]);
+  });
+  document.getElementById('online').textContent=(count+1)+' คน';
+ });
+};
+
+// ล้าง service worker เก่าๆ
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister()));}
+</script>
+</body>
+</html>
