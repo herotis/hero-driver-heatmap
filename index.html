@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>FishRadar Phuket - Join Team</title>
+<title>FishRadar Phuket - No Bots</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -13,109 +13,156 @@
 *{box-sizing:border-box;font-family:'Outfit','Noto Sans Thai',sans-serif}
 body,html{margin:0;padding:0;width:100%;height:100dvh;overflow:hidden;background:#e5e7eb}
 #map{width:100%;height:100dvh;position:absolute;top:0;left:0;z-index:1}
-.floating-top{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(255,255,255,0.95);backdrop-filter:blur(16px);border:1px solid rgba(0,0,0,0.08);border-radius:24px;padding:8px 16px;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.12);white-space:nowrap}
+.floating-top{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(255,255,255,0.95);backdrop-filter:blur(16px);border-radius:24px;padding:8px 14px;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.12);display:flex;gap:8px;align-items:center;white-space:nowrap}
 #joinPanel{position:fixed;top:0;left:0;width:100%;height:100dvh;z-index:9999;background:rgba(248,250,252,0.92);backdrop-filter:blur(12px);display:flex;align-items:flex-start;justify-content:center;padding:12px 16px;overflow-y:auto}
 .card{width:100%;max-width:380px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.15);padding:16px;margin-top:8px}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.badge{font-size:11px;background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;padding:4px 8px;border-radius:20px}
 .btn-join{width:100%;height:56px;background:#0f172a;color:#fff;border:0;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;position:sticky;top:0;z-index:2}
 .btn-join:disabled{opacity:0.4}
-.input-name{width:100%;height:50px;border:2px solid #e2e8f0;border-radius:12px;padding:0 14px;font-size:16px;outline:none;margin-bottom:14px}
-.colors{display:flex;gap:8px;margin-bottom:14px}
-.color-btn{flex:1;height:62px;border-radius:12px;border:2px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.input-name{width:100%;height:50px;border:2px solid #e2e8f0;border-radius:12px;padding:0 14px;font-size:16px;outline:none;margin-bottom:12px}
+.colors{display:flex;gap:8px;margin-bottom:12px}
+.color-btn{flex:1;height:56px;border-radius:12px;border:2px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .color-btn.active{border-color:#0f172a;transform:scale(1.05)}
-.color-btn .dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.8)}
-.info{border-radius:12px;padding:10px 12px;font-size:12px;margin-bottom:10px;display:flex;gap:8px}
-.info.green{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
-.footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;border-top:1px solid #f1f5f9;padding-top:10px}
+.bot-panel{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px 12px;font-size:12px;margin-bottom:10px}
+.bot-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #ffedd5}
+.bot-row:last-child{border:0}
+.btn-small{padding:4px 8px;border-radius:6px;border:0;cursor:pointer;font-size:11px;font-weight:600}
+.btn-del{background:#fee2e2;color:#991b1b}
+.btn-clean{background:#0f172a;color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-size:12px;font-weight:600;width:100%;margin-top:8px}
+.footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:10px}
 </style>
 </head>
 <body>
 <div id="map"></div>
-<div class="floating-top" id="topBar">● FishRadar ภูเก็ต LIVE <span id="onlineCount">0</span> ออนไลน์ • teams/phuket</div>
+<div class="floating-top" id="topBar">● LIVE <span id="onlineCount">0</span> • บอท <span id="botCount">0</span> • <span id="realCount">0</span> คนจริง</div>
 <div id="joinPanel">
 <div class="card">
-<div class="header"><h2>👥 เข้าร่วมทีม</h2><span class="badge">Firebase Ready</span></div>
+<div style="display:flex;justify-content:space-between;margin-bottom:12px"><h2 style="margin:0;font-size:15px">👥 เข้าร่วมทีม</h2><span style="font-size:11px;background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;padding:4px 8px;border-radius:20px">No Bots Filter</span></div>
 <button class="btn-join" id="joinBtn" disabled>✈ Join Team & Share Location</button>
 <input class="input-name" id="nameInput" placeholder="เช่น Hero, ต้อม, Nok...">
-<div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:8px">สีทีม • TEAM COLOR</div>
+<div style="font-size:12px;font-weight:600;color:#475569;margin-bottom:6px">สีทีม</div>
 <div class="colors" id="colors"></div>
-<div class="info green"><span>🛡️</span><div><b>Path: teams/phuket/drivers</b><br><span style="font-size:11px">ตอนนี้เห็น 8 คนใน Firebase แล้ว!</span></div></div>
-<div class="footer">ภูเก็ต • Phuket - OSM Free - Path teams/phuket/drivers</div>
+<div class="bot-panel" id="botPanel">
+<div style="font-weight:700;margin-bottom:6px">🤖 ตรวจบอท • กรองของเก่า</div>
+<div id="botList">กำลังโหลด...</div>
+<button class="btn-clean" id="cleanBots">🧹 ลบบอท/ของเก่า >10 นาทีทั้งหมด</button>
+<div style="font-size:10px;color:#9ca3af;margin-top:6px">* บอท = ไม่อัพเดทเกิน 5 นาที, lat=0, ชื่อ hero_xxx</div>
+</div>
+<div class="footer">กรองบอทแล้ว • เห็นเฉพาะคนจริงออนไลน์ 5 นาทีล่าสุด</div>
 </div>
 </div>
 <script>
 const COLORS=[{name:'Coral',bg:'#ff6b6b',dot:'#ef4444'},{name:'Teal',bg:'#2dd4bf',dot:'#14b8a6'},{name:'Sun',bg:'#fcd34d',dot:'#f59e0b'},{name:'Violet',bg:'#a78bfa',dot:'#8b5cf6'}];
-let myColor=COLORS[0],myName='',myId='',map,myMarker,markers={},db;
+let myColor=COLORS[0],myName='',myId='',map,myMarker,markers={},db,allData={};
+
 const colorsDiv=document.getElementById('colors');
 COLORS.forEach((c,i)=>{
 const btn=document.createElement('button');
 btn.className='color-btn'+(i==0?' active':'');
 btn.style.background=c.bg;
-btn.innerHTML=`<div class="dot" style="background:${c.dot}"></div><div style="color:${c.name=='Sun'?'#78350f':'#fff'};font-size:11px;font-weight:600;margin-top:2px">${c.name}</div>`;
+btn.innerHTML=`<div style="width:18px;height:18px;border-radius:50%;background:${c.dot};border:2px solid #fff"></div><div style="font-size:10px;font-weight:600;margin-top:2px">${c.name}</div>`;
 btn.onclick=()=>{document.querySelectorAll('.color-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');myColor=c;};
 colorsDiv.appendChild(btn);
 });
+
 const nameInput=document.getElementById('nameInput');
 const joinBtn=document.getElementById('joinBtn');
 nameInput.addEventListener('input',()=>{myName=nameInput.value.trim();joinBtn.disabled=!myName;});
-nameInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&myName) joinBtn.click();});
+
 firebase.initializeApp({databaseURL:"https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app"});
 db=firebase.database();
 map=L.map('map',{zoomControl:false}).setView([7.8804,98.3923],11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
 L.control.zoom({position:'bottomright'}).addTo(map);
 
+function isBot(id,d){
+const now=Date.now();
+const ts=d.ts||d.timestamp||0;
+const age = now - ts;
+const isOld = age > 5*60*1000; // 5 นาทีไม่อัพเดท = บอท/ค้าง
+const isZero = !d.lat || !d.lng || (parseFloat(d.lat)==0) || (parseFloat(d.lng)==0);
+const isHeroName = (d.name||'').startsWith('hero_') || id.startsWith('hero_');
+const noName = !d.name || d.name.trim()=='' || d.name===id;
+return {isBot: isOld || isZero || isHeroName || noName, age, isOld, isZero, isHeroName};
+}
+
+db.ref('teams/phuket/drivers').on('value',snap=>{
+allData=snap.val()||{};
+let real=0, bots=0;
+let botHtml='';
+Object.keys(allData).forEach(id=>{
+const d=allData[id];
+const check=isBot(id,d);
+if(myId && id===myId) return;
+if(check.isBot){
+bots++;
+const ageMin=Math.floor(check.age/60000);
+botHtml+=`<div class="bot-row"><span>${(d.name||id).substring(0,18)} • ${ageMin}นาทีที่แล้ว ${check.isHeroName?'🤖':''} ${check.isZero?'📍0':''}</span><button class="btn-small btn-del" onclick="delBot('${id}')">ลบ</button></div>`;
+if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}
+}else{
+real++;
+const lat=parseFloat(d.lat||d.latitude),lng=parseFloat(d.lng||d.longitude);
+if(isNaN(lat)||isNaN(lng)) return;
+const bg=d.color?.bg||'#ef4444';
+const name=d.name||'เพื่อน';
+if(!markers[id]){
+const icon=L.divIcon({html:`<div style="background:${bg};width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${name[0].toUpperCase()}</div>`,className:'',iconSize:[32,32],iconAnchor:[16,16]});
+markers[id]=L.marker([lat,lng],{icon}).addTo(map).bindPopup(`<b>${name}</b><br>${Math.floor(check.age/1000)}วิที่แล้ว<br>คนจริง ✅`);
+}else markers[id].setLatLng([lat,lng]);
+}
+});
+document.getElementById('onlineCount').textContent=real+bots;
+document.getElementById('botCount').textContent=bots;
+document.getElementById('realCount').textContent=real;
+document.getElementById('botList').innerHTML= botHtml || '<div style="color:#16a34a">✅ ไม่มีบอทแล้ว! มีแต่คนจริง</div>';
+document.getElementById('topBar').innerHTML=`● LIVE <span>${real+bots}</span> • บอท <span style="color:#ef4444">${bots}</span> • <span style="color:#16a34a">${real}</span> คนจริง`;
+});
+
+window.delBot=(id)=>{
+if(confirm('ลบบอท '+id+' ?')){
+db.ref('teams/phuket/drivers/'+id).remove();
+db.ref('drivers/'+id).remove();
+db.ref('teams/'+id).remove();
+}
+};
+
+document.getElementById('cleanBots').onclick=()=>{
+if(!confirm('ลบบอท/ของเก่า >10 นาทีทั้งหมด? ('+Object.keys(allData).length+' ตัว)')) return;
+let del=0;
+Object.keys(allData).forEach(id=>{
+const d=allData[id];
+const check=isBot(id,d);
+if(check.age > 10*60*1000 || check.isZero){
+db.ref('teams/phuket/drivers/'+id).remove();
+db.ref('drivers/'+id).remove();
+del++;
+}
+});
+alert('ลบ '+del+' ตัวแล้ว');
+};
+
 joinBtn.onclick=()=>{
 if(!myName)return;
-myId='hero_'+Math.random().toString(36).substr(2,6)+'_'+Math.random().toString(36).substr(2,4);
+myId='real_'+Date.now().toString(36)+'_'+Math.random().toString(36).substr(2,3);
 document.getElementById('joinPanel').style.display='none';
 writePos(7.8804,98.3923,100);
 if(navigator.geolocation){
 navigator.geolocation.watchPosition(pos=>{
 const lat=pos.coords.latitude,lng=pos.coords.longitude;
-if(!myMarker){map.flyTo([lat,lng],14);myMarker=L.circleMarker([lat,lng],{radius:11,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map).bindPopup(myName);}
+if(!myMarker){map.flyTo([lat,lng],14);myMarker=L.circleMarker([lat,lng],{radius:12,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map).bindPopup(myName+' (คุณ)');}
 else myMarker.setLatLng([lat,lng]);
 writePos(lat,lng,pos.coords.accuracy);
 },()=>{},{enableHighAccuracy:true});
 }
-// อ่านจาก path จริงของคุณ: teams/phuket/drivers
-db.ref('teams/phuket/drivers').on('value',snap=>{
-const data=snap.val()||{};let count=0;
-Object.keys(markers).forEach(id=>{if(!data[id]||id===myId){if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}}});
-Object.keys(data).forEach(id=>{
-if(id===myId)return;
-const d=data[id];if(!d)return;
-const lat=parseFloat(d.lat||d.latitude),lng=parseFloat(d.lng||d.longitude);
-if(isNaN(lat)||isNaN(lng)||(lat===0&&lng===0))return;
-count++;
-const name=d.name||id;
-const bg=d.color?.bg||d.color||'#ef4444';
-if(!markers[id]){
-const icon=L.divIcon({html:`<div style="background:${bg};width:30px;height:30px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px">${name[0].toUpperCase()}</div>`,className:'',iconSize:[30,30],iconAnchor:[15,15]});
-markers[id]=L.marker([lat,lng],{icon}).addTo(map).bindPopup(name+'<br>'+lat.toFixed(5)+','+lng.toFixed(5));
-}else markers[id].setLatLng([lat,lng]);
-});
-document.getElementById('onlineCount').textContent=count+1;
-document.getElementById('topBar').innerHTML=`● FishRadar ภูเก็ต LIVE <span>${count+1}</span> ออนไลน์ • teams/phuket • 8 คนเดิมยังอยู่`;
-});
+db.ref('teams/phuket/drivers').on('value',()=>{}); // trigger refresh
 };
 
 function writePos(lat,lng,acc){
 if(!myId)return;
-const data={name:myName,color:myColor,lat:lat,lng:lng,latitude:lat,longitude:lng,acc:Math.round(acc||0),ts:Date.now()};
+const data={name:myName,color:myColor,lat:lat,lng:lng,latitude:lat,longitude:lng,acc:Math.round(acc||0),ts:Date.now(),isReal:true};
 db.ref('teams/phuket/drivers/'+myId).set(data);
 db.ref('drivers/'+myId).set(data);
-db.ref('teams/'+myId).set(data);
-db.ref('team/'+myId).set(data);
-try{
-db.ref('teams/phuket/drivers/'+myId).onDisconnect().remove();
-db.ref('drivers/'+myId).onDisconnect().remove();
-db.ref('teams/'+myId).onDisconnect().remove();
-db.ref('team/'+myId).onDisconnect().remove();
-}catch(e){}
+try{db.ref('teams/phuket/drivers/'+myId).onDisconnect().remove();db.ref('drivers/'+myId).onDisconnect().remove();}catch(e){}
 }
-setTimeout(()=>nameInput.focus(),400);
 </script>
 </body>
 </html>
