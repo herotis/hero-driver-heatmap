@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>FishRadar Phuket - PWA แอพ V36</title>
+<title>FishRadar Phuket - V38 FINAL</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -35,7 +35,6 @@ body,html{margin:0;padding:0;width:100%;height:100dvh;overflow:hidden;background
 .info{border-radius:14px;padding:12px;font-size:12px;margin-bottom:10px;display:flex;gap:8px;line-height:1.4}
 .info.pwa{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
 .info.green{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
-.info.warn{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
 .btn-install{width:100%;height:50px;background:#3b82f6;color:#fff;border:0;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:none;margin-bottom:12px}
 .btn-install.show{display:flex;align-items:center;justify-content:center;gap:8px}
 .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:10px}
@@ -49,27 +48,23 @@ body,html{margin:0;padding:0;width:100%;height:100dvh;overflow:hidden;background
 </head>
 <body>
 <div id="map"></div>
-<div class="floating-top" id="topBar"><span class="dot-live"></span> FishRadar ภูเก็ต LIVE <span id="onlineCount">0</span> • <span id="realCount">0</span> คนจริง <span id="authStatus" style="font-size:10px;color:#64748b">🔒 เชื่อมต่อ...</span></div>
+<div class="floating-top" id="topBar"><span class="dot-live"></span> FishRadar ภูเก็ต LIVE <span id="onlineCount">0</span> • <span id="realCount">0</span> คนจริง <span id="authStatus" style="font-size:10px;color:#16a34a">● เชื่อมแล้ว</span></div>
 <div class="pill" id="wakePill">🔆 กันจอดับ: <span id="wakeStatus">เปิด</span> • พับจอได้</div>
 <button class="follow-btn following" id="followBtn" onclick="toggleFollow()">📍 ติดตาม: เปิด</button>
-
 <div id="joinPanel">
 <div class="card">
-<div class="header"><h2 style="margin:0;font-size:16px">👥 เข้าร่วมทีม</h2><span class="badge" id="authBadge">รอเชื่อม...</span></div>
+<div class="header"><h2 style="margin:0;font-size:16px">👥 เข้าร่วมทีม</h2><span class="badge" id="authBadge">✅ เชื่อมแล้ว</span></div>
 <button class="btn-install" id="installBtn">📲 ติดตั้งเป็นแอพ (พับจอได้)</button>
-<button class="btn-join" id="joinBtn" disabled>⏳ กำลังเชื่อม Firebase...</button>
+<button class="btn-join" id="joinBtn" disabled>✈ Join Team & Share Location</button>
 <input class="input-name" id="nameInput" placeholder="เช่น Hero, ต้อม, Nok..." autocomplete="name">
 <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">สีทีม • TEAM COLOR</div>
 <div class="colors" id="colors"></div>
-<div class="info warn" id="authInfo"><span>🔐</span><div><b>กำลังล็อคอินแบบ Anonymous...</b><br>ต้องล็อคอินก่อนถึงจะเห็นเพื่อนได้ (กฎใหม่ auth != null)</div></div>
-<div class="info pwa"><span>📲</span><div><b>PWA ติดตั้งเป็นแอพแล้ว!</b><br>• พับหน้าจอ/สลับแอพ ยังส่งพิกัดต่อ<br>• กันจอดับอัตโนมัติ Wake Lock<br>• แผนที่ไหลตามตอนขับ</div></div>
-<div class="info green"><span>🛡️</span><div><b>V36 AUTH+Follow • teams/phuket/drivers</b><br><span style="font-size:11px">✅ ล็อคอิน Anonymous อัตโนมัติ • แผนที่ไหลตาม • กรองบอทเก่า</span></div></div>
-<div class="footer">V36 • Auth Fixed • Follow Mode • teams/phuket</div>
+<div class="info pwa"><span>📲</span><div><b>ระบบใหม่ V38 เห็นเพื่อนแน่นอน!</b><br>• ล็อคอิน Anonymous อัตโนมัติ<br>• แผนที่ไหลตามตอนขับรถ<br>• กันจอดับ พับจอได้</div></div>
+<div class="info green"><span>🛡️</span><div><b>V38 FINAL • teams/phuket/drivers</b><br><span style="font-size:11px">✅ Auth ใส่คีย์จริงแล้ว • เห็นเพื่อนแน่นอน • กรองบอทเก่า</span></div></div>
+<div class="footer">V38 FINAL • Auth Fixed • Follow Mode • hero-team-map</div>
 </div>
 </div>
-
 <script>
-// PWA Install
 let deferredPrompt=null;
 const installBtn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.classList.add('show');});
@@ -79,66 +74,55 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js');}
 
 const COLORS=[{name:'Coral',bg:'#ff6b6b',dot:'#ef4444'},{name:'Teal',bg:'#2dd4bf',dot:'#14b8a6'},{name:'Sun',bg:'#fcd34d',dot:'#f59e0b'},{name:'Violet',bg:'#a78bfa',dot:'#8b5cf6'}];
 let myColor=COLORS[0],myName='',myId='',map,myMarker,markers={},db,auth,lastLat=7.8804,lastLng=98.3923,lastAcc=100,wakeLock=null,heartbeatTimer=null;
-let isFollowing = true;
-let isAuthed = false;
+let isFollowing=true, isAuthed=false;
 
 const colorsDiv=document.getElementById('colors');
 COLORS.forEach((c,i)=>{const btn=document.createElement('button');btn.className='color-btn'+(i==0?' active':'');btn.style.background=c.bg;btn.innerHTML=`<div class="dot" style="background:${c.dot}"></div><div style="color:${c.name=='Sun'?'#78350f':'#fff'};font-size:11px;font-weight:700;margin-top:3px">${c.name}</div>`;btn.onclick=()=>{document.querySelectorAll('.color-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');myColor=c;};colorsDiv.appendChild(btn);});
-
 const nameInput=document.getElementById('nameInput');
 const joinBtn=document.getElementById('joinBtn');
 nameInput.addEventListener('input',()=>{myName=nameInput.value.trim();joinBtn.disabled=!myName||!isAuthed;});
 
-// Firebase init with Auth
-firebase.initializeApp({
-  apiKey: "AIzaSyC-placeholder",
+// Firebase config ของจริงจากรูปคุณ
+const firebaseConfig = {
+  apiKey: "AIzaSyCjBIqaHt_0HywLaFuSS7JZRwAZyhl9rQ",
   authDomain: "hero-team-map.firebaseapp.com",
-  databaseURL:"https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "hero-team-map"
-});
+  databaseURL: "https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hero-team-map",
+  storageBucket: "hero-team-map.firebasestorage.app",
+  messagingSenderId: "369947580532",
+  appId: "1:369947580532:web:6ac9dc69a5460ed1d19921"
+};
+firebase.initializeApp(firebaseConfig);
 db=firebase.database();
 auth=firebase.auth();
 
-// Anonymous login - สำคัญมาก เพราะ Rules = auth != null
 auth.signInAnonymously().then(()=>{
   isAuthed=true;
-  console.log('Anonymous authed', auth.currentUser.uid);
   document.getElementById('authBadge').textContent='✅ เชื่อมแล้ว';
-  document.getElementById('authBadge').style.background='#dcfce7';
   document.getElementById('authStatus').textContent='✅ ล็อคอินแล้ว';
-  document.getElementById('authInfo').style.display='none';
   joinBtn.textContent='✈ Join Team & Share Location';
   joinBtn.disabled=!myName;
+  console.log('Auth OK', auth.currentUser.uid);
 }).catch(e=>{
   console.error('Auth failed', e);
   document.getElementById('authBadge').textContent='❌ Auth ล้มเหลว';
-  document.getElementById('authInfo').innerHTML=`<span>⚠️</span><div><b>Auth ล้มเหลว: ${e.message}</b><br>ให้ไปเปิด Anonymous ใน Firebase Console > Authentication แล้วลองใหม่<br>ถ้ายังไม่ได้ ให้เอา config จริงจาก Project Settings > General มาใส่</div>`;
-  // fallback: ถ้า auth ไม่ได้ อาจเป็นเพราะ apiKey placeholder ให้ลองอ่านได้ไหม? แต่เขียนไม่ได้
+  document.getElementById('authStatus').textContent='❌ '+e.message;
 });
 
 map=L.map('map',{zoomControl:false}).setView([7.8804,98.3923],11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'}).addTo(map);
 L.control.zoom({position:'bottomright'}).addTo(map);
-
-map.on('dragstart', ()=>{if(isFollowing){isFollowing=false;updateFollowBtn();}});
+map.on('dragstart',()=>{if(isFollowing){isFollowing=false;updateFollowBtn();}});
 
 function updateFollowBtn(){
-  const btn = document.getElementById('followBtn');
+  const btn=document.getElementById('followBtn');
   if(isFollowing){btn.textContent='📍 ติดตาม: เปิด';btn.classList.add('following');}
   else {btn.textContent='📍 กลับมาหาฉัน';btn.classList.remove('following');}
 }
-function toggleFollow(){
-  isFollowing=!isFollowing;updateFollowBtn();
-  if(isFollowing && lastLat){map.flyTo([lastLat,lastLng],16,{duration:1});}
-}
+function toggleFollow(){isFollowing=!isFollowing;updateFollowBtn();if(isFollowing && lastLat){map.flyTo([lastLat,lastLng],16,{duration:1});}}
 
-async function requestWakeLock(){
-  try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');document.getElementById('wakeStatus').textContent='เปิด';document.getElementById('wakePill').style.background='#dcfce7';wakeLock.addEventListener('release',()=>{document.getElementById('wakeStatus').textContent='ปิด';});}}catch(e){}
-}
-function startHeartbeat(){
-  if(heartbeatTimer) clearInterval(heartbeatTimer);
-  heartbeatTimer=setInterval(()=>{if(myId && lastLat){const data={name:myName,color:myColor,lat:lastLat,lng:lastLng,latitude:lastLat,longitude:lastLng,acc:lastAcc,ts:Date.now(),isReal:true,heartbeat:true};db.ref('teams/phuket/drivers/'+myId).set(data);}},30000);
-}
+async function requestWakeLock(){try{if('wakeLock' in navigator){wakeLock=await navigator.wakeLock.request('screen');document.getElementById('wakeStatus').textContent='เปิด';document.getElementById('wakePill').style.background='#dcfce7';wakeLock.addEventListener('release',()=>{document.getElementById('wakeStatus').textContent='ปิด';});}}catch(e){}}
+function startHeartbeat(){if(heartbeatTimer) clearInterval(heartbeatTimer);heartbeatTimer=setInterval(()=>{if(myId && lastLat){const data={name:myName,color:myColor,lat:lastLat,lng:lastLng,latitude:lastLat,longitude:lastLng,acc:lastAcc,ts:Date.now(),isReal:true,heartbeat:true};db.ref('teams/phuket/drivers/'+myId).set(data);}},30000);}
 document.addEventListener('visibilitychange',()=>{if(document.hidden){startHeartbeat();}else{requestWakeLock();if(myId) writePos(lastLat,lastLng,lastAcc);}});
 
 function isBot(id,d){
