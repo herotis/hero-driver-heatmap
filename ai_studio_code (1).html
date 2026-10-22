@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b1220">
+<title>Hero Driver Map — Phuket Team</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+:root{--bg:#0b1220;--panel:#111c2f;--ink:#eaf1ff;--muted:#9aa9c2;--accent:#0284c7;--good:#22c55e;--bad:#ef4444}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body,#map{height:100%;width:100%;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);overflow:hidden}
+#map{position:absolute;inset:0;z-index:1}
+
+/* แถบด้านบน */
+.topbar{position:fixed;z-index:500;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:#0b1220ee;color:var(--ink);border:1px solid #ffffff1a;border-radius:16px;box-shadow:0 8px 30px #00000066;backdrop-filter:blur(12px)}
+.brand{font-weight:900;font-size:14px;letter-spacing:.3px;display:flex;align-items:center;gap:6px}
+.status{font-size:11px;color:var(--muted);margin-top:2px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{white-space:nowrap;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;background:#1e293b;color:#dbeafe}
+.pill.ok{background:#14532d;color:#86efac}
+.pill.err{background:#7f1d1d;color:#fecdd3}
+
+/* ปุ่มควบคุมด้านล่าง */
+.controls{position:fixed;z-index:500;left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center;flex-wrap:wrap;pointer-events:none}
+.controls button{pointer-events:auto;border:1px solid #ffffff26;border-radius:14px;padding:11px 15px;background:#0b1220ee;color:#f8fafc;font-size:13px;font-weight:800;box-shadow:0 6px 20px #0006;cursor:pointer;backdrop-filter:blur(8px);display:flex;align-items:center;gap:5px}
+.controls button:active{transform:scale(0.96)}
+.controls button.primary{background:#0284c7;border-color:#38bdf8;color:#fff}
+.controls button.active-btn{background:#1e293b;border-color:#60a5fa}
+
+/* หน้าต่างแจ้งปัญหา / คำเตือน */
+#warnBanner{position:fixed;z-index:1000;top:calc(70px + env(safe-area-inset-top));left:10px;right:10px;background:#7f1d1de6;color:#fee2e2;padding:10px 14px;border-radius:12px;font-size:12px;display:none;backdrop-filter:blur(8px);border:1px solid #ef4444}
+
+/* Speedometer HUD */
+.speed-hud{position:fixed;z-index:500;top:calc(70px + env(safe-area-inset-top));right:12px;background:#0b1220ee;border:1px solid #ffffff1c;border-radius:14px;padding:8px 12px;text-align:center;color:white;box-shadow:0 4px 20px #0005;backdrop-filter:blur(8px)}
+.speed-val{font-size:22px;font-weight:900;color:#38bdf8;line-height:1}
+.speed-unit{font-size:10px;color:var(--muted);font-weight:700}
+
+/* หน้าต่างตั้งชื่อก่อนเริ่ม */
+#joinPanel{position:fixed;inset:0;z-index:2000;background:#07101fee;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(10px)}
+.card{width:min(100%,380px);background:#ffffff;color:#0f172a;border-radius:24px;padding:22px;box-shadow:0 24px 70px #000c}
+.title{font-size:20px;font-weight:900;color:#0f172a}
+.sub{font-size:13px;color:#64748b;line-height:1.4;margin:6px 0 14px}
+.field-label{font-size:12px;font-weight:800;color:#334155;margin:10px 0 6px}
+.input{width:100%;height:46px;border:1.5px solid #cbd5e1;border-radius:12px;padding:0 14px;font:inherit;font-size:16px;outline:none;background:#f8fafc}
+.input:focus{border-color:#0284c7;background:#fff}
+.colors{display:flex;gap:8px;margin:8px 0 16px}
+.color-btn{height:42px;flex:1;border:3px solid transparent;border-radius:12px;cursor:pointer}
+.color-btn.active{border-color:#0f172a;outline:2px solid #fff;outline-offset:-6px}
+.join{width:100%;min-height:48px;border:0;border-radius:12px;background:#0284c7;color:white;font-weight:900;font-size:15px;cursor:pointer}
+.solo-btn{width:100%;min-height:42px;border:1px solid #cbd5e1;border-radius:12px;background:#f1f5f9;color:#334155;font-weight:800;font-size:13px;cursor:pointer;margin-top:8px}
+
+/* หมุดคนขับ */
+.driver-wrap{display:flex;flex-direction:column;align-items:center}
+.driver-pin{width:36px;height:36px;border-radius:50%;border:3px solid white;box-shadow:0 3px 12px #0008;display:flex;align-items:center;justify-content:center;color:white;font-size:15px;font-weight:900}
+.driver-label{margin-top:2px;background:#0b1220ee;color:white;border-radius:6px;padding:2px 6px;white-space:nowrap;font-size:11px;font-weight:800;box-shadow:0 2px 8px #0004}
+
+@media(min-width:700px){
+  .topbar{left:18px;right:auto;min-width:320px}
+  .controls{left:50%;right:auto;transform:translateX(-50%);bottom:20px}
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- แถบเตือนข้อผิดพลาด -->
+<div id="warnBanner"></div>
+
+<!-- มาตรวัดความเร็ว -->
+<div class="speed-hud" id="speedHud">
+  <div class="speed-val" id="speedVal">0</div>
+  <div class="speed-unit">กม./ชม.</div>
+</div>
+
+<div class="topbar">
+  <div>
+    <div class="brand">📍 PHUKET DRIVER TEAM</div>
+    <div class="status" id="statusText">กำลังเริ่มแผนที่...</div>
+  </div>
+  <div class="pill" id="online">0 คน</div>
+</div>
+
+<div class="controls">
+  <button id="locateBtn" class="primary">◎ พิกัดฉัน</button>
+  <button id="followBtn">ล็อคจอ: เปิด</button>
+  <button id="layerBtn">🗺️ ดาวเทียม</button>
+  <button id="shareBtn">🔗 แชร์ทีม</button>
+</div>
+
+<!-- Modal ตั้งค่าก่อนเข้าใช้งาน -->
+<div id="joinPanel">
+  <section class="card">
+    <div class="title">🚗 เข้าสู่ระบบทีมคนขับ</div>
+    <div class="sub">ดูตำแหน่งเพื่อนและแชร์ GPS ร่วมกันแบบเรียลไทม์</div>
+    
+    <div class="field-label">ชื่อเรียกของคุณ</div>
+    <input class="input" id="nameInput" maxlength="20" placeholder="เช่น บังแอน / พี่โชค" autocomplete="nickname">
+    
+    <div class="field-label">เลือกสีประจำตัว</div>
+    <div class="colors" id="colors"></div>
+    
+    <button class="join" id="joinBtn">เข้าสู่ทีม (แชร์ตำแหน่งสด)</button>
+    <button type="button" class="solo-btn" id="soloBtn">ใช้คนเดียว (ไม่ต่อเซิร์ฟเวอร์)</button>
+  </section>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<script>
+(() => {
+'use strict';
+const TEAM_PATH = 'teams/phuket/drivers';
+const COLORS = [
+  {name:'ฟ้า', bg:'#0284c7'},
+  {name:'เขียว', bg:'#10b981'},
+  {name:'แดง', bg:'#ef4444'},
+  {name:'ส้ม', bg:'#f59e0b'},
+  {name:'ม่วง', bg:'#8b5cf6'}
+];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCjBIqaHt_0HywLaFuSS7JZRwAZyhl9rQ",
+  authDomain: "hero-team-map.firebaseapp.com",
+  databaseURL: "https://hero-team-map-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hero-team-map",
+  storageBucket: "hero-team-map.firebasestorage.app",
+  messagingSenderId: "369947580532",
+  appId: "1:369947580532:web:6ac9dc69a5460ed1d19921"
+};
+
+const $ = id => document.getElementById(id);
+let selectedColor = COLORS[0];
+let myId = null, myName = '', db = null, auth = null;
+let gpsWatch = null, myMarker = null, myCircle = null, lastPosition = null;
+let isFollowing = true, isOnlineMode = false;
+let isSatellite = false, wakeLock = null;
+const remoteMarkers = new Map();
+
+// 1. ตรวจสอบสภาพแวดล้อมการเปิดไฟล์ (HTTPS / Local File)
+if(location.protocol === 'file:'){
+  showWarn('⚠️ คุณเปิดไฟล์แบบดับเบิ้ลคลิก (file://) มือถือ/เบราว์เซอร์จะบล็อก GPS และระบบทีม ต้องอัปขึ้น GitHub หรือรันผ่าน Web Server');
+}
+
+function showWarn(msg){
+  const el = $('warnBanner');
+  el.innerHTML = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 8000);
+}
+
+function setStatus(text, mode=''){
+  $('statusText').textContent = text;
+  const pill = $('online');
+  pill.classList.toggle('ok', mode === 'ok');
+  pill.classList.toggle('err', mode === 'err');
+}
+
+// 2. สร้างแผนที่ทันที (ไม่รอเน็ต ไม่รอ Firebase)
+const map = L.map('map', {zoomControl: false}).setView([7.8804, 98.3923], 12);
+const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19, attribution: '&copy; CARTO'
+}).addTo(map);
+
+const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 19, attribution: '&copy; Esri'
+});
+
+L.control.zoom({position: 'topright'}).addTo(map);
+map.on('dragstart', () => { isFollowing = false; updateFollowButton(); });
+
+function escapeHtml(v){ return String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function makeDriverIcon(name, color){
+  const char = escapeHtml((name || '').trim().charAt(0).toUpperCase() || '?');
+  return L.divIcon({
+    className: '',
+    html: `<div class="driver-wrap"><div class="driver-pin" style="background:${color}">${char}</div><div class="driver-label">${escapeHtml(name||'ฉัน')}</div></div>`,
+    iconSize: [80, 56],
+    iconAnchor: [40, 18],
+    popupAnchor: [0, -18]
+  });
+}
+
+function updateFollowButton(){
+  $('followBtn').textContent = isFollowing ? 'ล็อคจอ: เปิด' : 'ล็อคจอ: ปิด';
+  $('followBtn').classList.toggle('active-btn', isFollowing);
+}
+
+// 3. ฟังก์ชันรับพิกัด GPS
+function renderMyPosition(pos){
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const acc = pos.coords.accuracy;
+  const spd = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+
+  $('speedVal').textContent = spd;
+  lastPosition = {lat, lng, acc, spd, ts: Date.now()};
+  const point = [lat, lng];
+
+  if(!myMarker){
+    myMarker = L.marker(point, {icon: makeDriverIcon(myName || 'ฉัน', selectedColor.bg), zIndexOffset: 1000}).addTo(map);
+    myCircle = L.circle(point, {radius: Math.max(5, acc || 15), color: selectedColor.bg, weight: 1, fillColor: selectedColor.bg, fillOpacity: 0.15}).addTo(map);
+    map.setView(point, 16);
+  } else {
+    myMarker.setLatLng(point).setIcon(makeDriverIcon(myName || 'ฉัน', selectedColor.bg));
+    myCircle.setLatLng(point).setRadius(Math.max(5, acc || 15));
+    if(isFollowing) map.panTo(point, {animate: true, duration: 0.5});
+  }
+
+  setStatus(`GPS พร้อม (ความแม่นยำ ±${Math.round(acc)}ม.)`, 'ok');
+
+  // ถ้าออนไลน์อยู่ ให้ส่งพิกัดเข้า Firebase
+  if(isOnlineMode && db && myId){
+    db.ref(`${TEAM_PATH}/${myId}`).update({
+      name: myName,
+      color: selectedColor.bg,
+      lat, lng,
+      acc: Math.round(acc || 0),
+      spd,
+      ts: Date.now()
+    }).catch(e => console.warn(e));
+  }
+}
+
+function onGpsError(err){
+  const msg = {1: 'โปรดกดยอมรับ Location', 2: 'ไม่พบสัญญาณ GPS', 3: 'หมดเวลารอพิกัด'};
+  setStatus(msg[err.code] || 'GPS ขัดข้อง', 'err');
+}
+
+// เริ่มเปิด GPS ทันทีตั้งแต่เปิดหน้าเว็บ
+if(navigator.geolocation){
+  gpsWatch = navigator.geolocation.watchPosition(renderMyPosition, onGpsError, {
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 15000
+  });
+} else {
+  setStatus('อุปกรณ์นี้ไม่รองรับ GPS', 'err');
+}
+
+// 4. เริ่มระบบทีม (เชื่อมต่อ Firebase)
+async function startOnlineTeam(){
+  myName = $('nameInput').value.trim() || 'คนขับภูเก็ต';
+  localStorage.setItem('hero_name', myName);
+  $('joinBtn').disabled = true;
+  $('joinBtn').textContent = 'กำลังต่อเซิร์ฟเวอร์...';
+
+  try {
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.database();
+
+    // ล็อกอินอัตโนมัติ
+    await auth.signInAnonymously();
+    myId = 'driver_' + auth.currentUser.uid;
+
+    // ตั้งค่าลบตัวเองเมื่อปิดจอ
+    await db.ref(`${TEAM_PATH}/${myId}`).onDisconnect().remove();
+
+    // ดึงพิกัดเพื่อนร่วมทีม
+    db.ref(TEAM_PATH).on('value', snapshot => {
+      const data = snapshot.val() || {};
+      const now = Date.now();
+      const seen = new Set();
+      let count = 0;
+
+      Object.entries(data).forEach(([id, d]) => {
+        if(!d || id === myId) return;
+        if(now - d.ts > 10 * 60 * 1000) return; // เกิน 10 นาทีไม่แสดง
+        seen.add(id);
+        count++;
+
+        if(!remoteMarkers.has(id)){
+          const m = L.marker([d.lat, d.lng], {icon: makeDriverIcon(d.name, d.color || '#ef4444')}).addTo(map);
+          m.bindPopup(`<b>${escapeHtml(d.name)}</b><br>ความเร็ว: ${d.spd||0} กม./ชม.`);
+          remoteMarkers.set(id, m);
+        } else {
+          const m = remoteMarkers.get(id);
+          m.setLatLng([d.lat, d.lng]).setIcon(makeDriverIcon(d.name, d.color || '#ef4444'));
+          m.setPopupContent(`<b>${escapeHtml(d.name)}</b><br>ความเร็ว: ${d.spd||0} กม./ชม.`);
+        }
+      });
+
+      for(const [id, m] of remoteMarkers.entries()){
+        if(!seen.has(id)){ map.removeLayer(m); remoteMarkers.delete(id); }
+      }
+      $('online').textContent = `${count + 1} คน`;
+    });
+
+    isOnlineMode = true;
+    $('joinPanel').style.display = 'none';
+    setStatus('เชื่อมต่อทีมเรียบร้อย', 'ok');
+  } catch(err) {
+    console.error(err);
+    $('joinBtn').disabled = false;
+    $('joinBtn').textContent = 'ลองใหม่อีกครั้ง';
+    showWarn(`⚠️ เข้าทีมไม่สำเร็จ: ${err.message}<br>แนะนำให้กดปุ่ม "ใช้คนเดียว" เพื่อทดสอบก่อน`);
+  }
+}
+
+// 5. โหมดเดี่ยว (ไม่ต้องง้อ Firebase)
+$('soloBtn').addEventListener('click', () => {
+  myName = $('nameInput').value.trim() || 'ฉัน';
+  $('joinPanel').style.display = 'none';
+  setStatus('โหมดเดี่ยว (ไม่ได้แชร์กับทีม)', 'ok');
+  if(lastPosition) renderMyPosition({coords: {latitude: lastPosition.lat, longitude: lastPosition.lng, accuracy: lastPosition.acc, speed: 0}});
+});
+
+// UI Events
+$('joinBtn').addEventListener('click', startOnlineTeam);
+$('nameInput').addEventListener('keydown', e => { if(e.key === 'Enter') startOnlineTeam(); });
+
+const saved = localStorage.getItem('hero_name');
+if(saved) $('nameInput').value = saved;
+
+COLORS.forEach((c, idx) => {
+  const btn = document.createElement('button');
+  btn.className = 'color-btn' + (idx === 0 ? ' active' : '');
+  btn.style.background = c.bg;
+  btn.onclick = () => {
+    selectedColor = c;
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if(myMarker) myMarker.setIcon(makeDriverIcon(myName || 'ฉัน', selectedColor.bg));
+  };
+  $('colors').appendChild(btn);
+});
+
+$('locateBtn').addEventListener('click', () => {
+  isFollowing = true;
+  updateFollowButton();
+  if(lastPosition) map.flyTo([lastPosition.lat, lastPosition.lng], 16);
+});
+
+$('followBtn').addEventListener('click', () => {
+  isFollowing = !isFollowing;
+  updateFollowButton();
+});
+
+$('layerBtn').addEventListener('click', () => {
+  isSatellite = !isSatellite;
+  if(isSatellite){
+    map.removeLayer(streetLayer);
+    satLayer.addTo(map);
+    $('layerBtn').textContent = '🗺️ แผนที่ปกติ';
+  } else {
+    map.removeLayer(satLayer);
+    streetLayer.addTo(map);
+    $('layerBtn').textContent = '🗺️ ดาวเทียม';
+  }
+});
+
+$('shareBtn').addEventListener('click', async () => {
+  if(navigator.share){
+    try { await navigator.share({title: 'Hero Driver Map', url: window.location.href}); } catch(e){}
+  } else {
+    await navigator.clipboard.writeText(window.location.href);
+    alert('คัดลอกลิงก์เรียบร้อย!');
+  }
+});
+
+updateFollowButton();
+})();
+</script>
+</body>
+</html>
